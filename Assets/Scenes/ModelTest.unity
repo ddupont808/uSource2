@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 2160.1543, g: 2263.795, b: 3301.2695, a: 1}
+  m_IndirectSpecularColor: {r: 2158.4463, g: 2262.3926, b: 3300.4062, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -479,6 +479,52 @@ MonoBehaviour:
   meshPath: models/props_junk/popcan01a.vmdl_c
   overrideMaterial: 0
   materialOverride: 
+--- !u!1 &1242564924
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1242564926}
+  - component: {fileID: 1242564925}
+  m_Layer: 0
+  m_Name: models/props_interiors/furniture_chair03a.vmdl_c
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1242564925
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1242564924}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dab76f1bd8550214b9f61713a3e5235a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  meshPath: models/props_interiors/furniture_chair03a.vmdl_c
+  overrideMaterial: 0
+  materialOverride: 
+--- !u!4 &1242564926
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1242564924}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1, y: 0, z: -0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 10
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1306126495
 GameObject:
   m_ObjectHideFlags: 0
@@ -568,12 +614,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 930770630aed6404eab84779f0d056ce, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  resourcePath: hl2ra
-  packagesPath: C:/Projects/src.blocks/Assets/Resources/
   packages:
-  - hl2rapart1
-  - hl2rapart2
-  - hl2rapart3
+  - C:/Projects/src.blocks/Assets/Resources/hl2rapart1.vpk
+  - C:/Projects/src.blocks/Assets/Resources/hl2rapart2.vpk
+  - C:/Projects/src.blocks/Assets/Resources/hl2rapart3.vpk
+  - C:\Program Files (x86)\Steam\steamapps\common\Half-Life Alyx\game\hlvr\pak01_dir.vpk
   opaqueMaterial: {fileID: 2100000, guid: 76da4b678706dd94a9586cc20fee1d7c, type: 2}
   clipMaterial: {fileID: 2100000, guid: 9a8e9318b9194dc4dabe69e9b05360e1, type: 2}
   transparentMaterial: {fileID: 2100000, guid: 686138a153738f748b1db24f408c70db, type: 2}

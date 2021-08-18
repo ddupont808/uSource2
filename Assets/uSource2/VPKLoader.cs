@@ -10,13 +10,13 @@ namespace uSource2
     {
         public Package[] packages;
 
-        public VPKLoader(string resourcePath, string[] packages)
+        public VPKLoader(string[] packages)
         {
             this.packages = new Package[packages.Length];
             for(int i = 0; i < packages.Length; i++)
             {
                 var package = new Package();
-                package.Read(Path.Combine(resourcePath, packages[i]));
+                package.Read(packages[i]);
                 // package.VerifyHashes();
 
                 this.packages[i] = package;

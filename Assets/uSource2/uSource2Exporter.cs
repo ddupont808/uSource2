@@ -20,6 +20,7 @@ namespace uSource2
     using VMaterial = ValveResourceFormat.ResourceTypes.Material;
     using VMesh = ValveResourceFormat.ResourceTypes.Mesh;
     using VModel = ValveResourceFormat.ResourceTypes.Model;
+    using VTexture = ValveResourceFormat.ResourceTypes.Texture;
 
     public class uSource2Exporter : MonoBehaviour
     {
@@ -32,8 +33,6 @@ namespace uSource2
             }
         }
 
-        public string resourcePath = "hl2ra";
-        public string packagesPath = "C:/Projects/src.blocks/Assets/Resources/hl2ra";
         public string[] packages;
 
         public Material opaqueMaterial;
@@ -46,7 +45,7 @@ namespace uSource2
 
         void Awake()
         {
-            loader = new VPKLoader(packagesPath, packages);
+            loader = new VPKLoader(packages);
         }
 
         public void LoadMesh(GameObject root, string modelPath, string materialOveride = null)
@@ -248,11 +247,6 @@ namespace uSource2
                                 new VertexAttributeDescriptor(VertexAttribute.Normal, VertexAttributeFormat.Float32, 3),
                                 new VertexAttributeDescriptor(VertexAttribute.Tangent, VertexAttributeFormat.Float32, 4),
                             };
-                        /*if (a.SemanticName == "TEXCOORD")
-                            return new[]
-                            {
-                                new VertexAttributeDescriptor(VertexAttribute.TexCoord0, VertexAttributeFormat.Float32, 2)
-                            };*/
                         return new[] { GetAccessor(a) };
                     }).ToArray();
 
@@ -273,17 +267,6 @@ namespace uSource2
                     // Set vertex attributes
                     foreach (var attribute in attributes)
                     {
-                        attributeCounters.TryGetValue(attribute.SemanticName, out var attributeCounter);
-                        attributeCounters[attribute.SemanticName] = attributeCounter + 1;
-
-                        // var accessorName = GetAccessorName(attribute.SemanticName, attributeCounter); // TODO : combine with GetAccessor ^^^
-
-
-                        // var offsetBytes = vertexCount * attribute.Offset;
-
-                        // var byteBuffer = buffer.Select(f => (byte)f).ToArray();
-
-
                         if (attribute.SemanticName == "NORMAL" && VMesh.IsCompressedNormalTangent(drawCall))
                         {
                             var buffer = ReadAttributeBuffer(vertexBuffer, attribute);
@@ -306,23 +289,6 @@ namespace uSource2
 
                             vertexDataOffset += stride;
                         }
-                        /*else if(attribute.SemanticName == "TEXCOORD")
-                        {
-                            var buffer = ReadAttributeBuffer(vertexBuffer, attribute);
-                            var stride = 8;
-
-                            var uvs = ToVector2Array(buffer).Select(uv => new Vector2(1f - uv.x, 1f - uv.y));
-                            var rawUVBuffer = new NativeArray<byte>(uvs.ToRawBytes(), Allocator.Temp);
-
-                            for (int i = 0; i < vertexBuffer.ElementCount; i++)
-                            {
-                                var dataOffset = (i * vertexDataStride) + vertexDataOffset;
-
-                                rawVertexData.Slice(dataOffset, stride).CopyFrom(rawUVBuffer.Slice(i * stride, stride));
-                            }
-
-                            vertexDataOffset += stride;
-                        }*/
                         else
                         {
                             var stride = VBIB.GetDXGIStride(attribute.Format);
@@ -471,30 +437,29 @@ namespace uSource2
 
                 Debug.Log($"Exporting texture: {texturePath}");
 
-                var path = Path.Combine(resourcePath, texturePath.Split('.')[0]);
-                var textureResource = Resources.Load<Texture2D>(path); //loader.LoadFile(texturePath + "_c");
+                var textureResource = loader.LoadFile(texturePath + "_c");
 
                 if (textureResource == null)
                 {
-                    Debug.LogWarning($"Missing texture: {path}");
+                    Debug.LogWarning($"Missing texture: {texturePath}");
                     continue;
                 }
 
                 switch (renderTexture.Key)
                 {
                     case "g_tColor":
-                        material.SetTexture("_BaseColorMap", textureResource);
+                        material.SetTexture("_BaseColorMap", ((VTexture)textureResource.DataBlock).GenerateTexture2D(false));
                         break;
                     case "g_tNormal":
-                        material.SetTexture("_NormalMap", textureResource);
+                        material.SetTexture("_NormalMap", ((VTexture)textureResource.DataBlock).GenerateTexture2D(true));
                         break;
                     case "g_tAmbientOcclusion":
-                        material.SetTexture("_MaskMap", textureResource);
+                        material.SetTexture("_MaskMap", ((VTexture)textureResource.DataBlock).GenerateTexture2D(false));
                         material.SetFloat("_AORemapMin", 0f);
                         break;
                     case "g_tSelfIllumMask":
                     case "g_tEmissive":
-                        material.SetTexture("_EmissiveColorMap", textureResource);
+                        material.SetTexture("_EmissiveColorMap", ((VTexture)textureResource.DataBlock).GenerateTexture2D(false));
                         break;
                     case "g_tShadowFalloff":
                     // example: tongue_gman, materials/default/default_skin_shadowwarp_tga_f2855b6e.vtex
@@ -538,7 +503,7 @@ namespace uSource2
             VertexAttribute attributeType;
             if (!System.Enum.TryParse<VertexAttribute>(attribute.SemanticName switch
             {
-                "TEXCOORD" => "TexCoord0",
+                "TEXCOORD" => $"TexCoord{attribute.SemanticIndex}",
                 _ => attribute.SemanticName
             }, true, out attributeType))
                 throw new NotImplementedException("Unknown SemanticName in drawCall! (" + attribute.SemanticName + ")");
@@ -559,6 +524,12 @@ namespace uSource2
 
         public static string GetAccessorName(string name, int index)
         {
+            /*
+             * 
+             * 
+                        attributeCounters.TryGetValue(attribute.SemanticName, out var index);
+                        attributeCounters[attribute.SemanticName] = index + 1;
+            */
             switch (name)
             {
                 case "TEXCOORD":
@@ -615,12 +586,8 @@ namespace uSource2
             {
                 // Undo-normalization
                 var compressedNormal = compressedNormalsTangents[i] * 255f;
-                var decompressedNormal = DecompressNormal(new Vector2(compressedNormal.x, compressedNormal.y));
-                var decompressedTangent = DecompressTangent(new Vector2(compressedNormal.z, compressedNormal.w));
-
-                // Swap Y and Z axes
-                normals[i] = new Vector3(decompressedNormal.x, decompressedNormal.z, decompressedNormal.y);
-                tangents[i] = new Vector4(decompressedTangent.x, decompressedTangent.z, decompressedTangent.y, decompressedTangent.w);
+                normals[i] = DecompressNormal(new Vector2(compressedNormal.x, compressedNormal.y));
+                tangents[i] = DecompressTangent(new Vector2(compressedNormal.z, compressedNormal.w));
             }
 
             return (normals, tangents);

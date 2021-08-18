@@ -6,9 +6,11 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using K4os.Compression.LZ4;
+using UnityEngine;
 // using SkiaSharp;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Blocks.ResourceEditInfoStructs;
+using Vector2 = System.Numerics.Vector2;
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -254,9 +256,9 @@ namespace ValveResourceFormat.ResourceTypes
             return null;
         }
 
-        /*
-        public SKBitmap GenerateBitmap()
+        public Texture2D GenerateTexture2D(bool linear = false)
         {
+
             Reader.BaseStream.Position = DataOffset;
 
             var width = ActualWidth >> MipmapLevelToExtract;
@@ -264,135 +266,104 @@ namespace ValveResourceFormat.ResourceTypes
             var blockWidth = Width >> MipmapLevelToExtract;
             var blockHeight = Height >> MipmapLevelToExtract;
 
-            var skiaBitmap = new SKBitmap(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
-
             SkipMipmaps();
 
             switch (Format)
             {
-                case VTexFormat.DXT1:
-                    return TextureDecompressors.UncompressDXT1(skiaBitmap, GetTextureSpan(), blockWidth, blockHeight);
-
-                case VTexFormat.DXT5:
-                    var yCoCg = false;
-                    var normalize = false;
-                    var invert = false;
-                    var hemiOct = false;
-
-                    if (Resource.EditInfo.Structs.ContainsKey(ResourceEditInfo.REDIStruct.SpecialDependencies))
-                    {
-                        var specialDeps = (SpecialDependencies)Resource.EditInfo.Structs[ResourceEditInfo.REDIStruct.SpecialDependencies];
-
-                        yCoCg = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version Image YCoCg Conversion");
-                        normalize = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version Image NormalizeNormals");
-                        invert = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version LegacySource1InvertNormals");
-                        hemiOct = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version Mip HemiOctAnisoRoughness");
-                    }
-
-                    return TextureDecompressors.UncompressDXT5(skiaBitmap, GetTextureSpan(), blockWidth, blockHeight, yCoCg, normalize, invert, hemiOct);
-
                 case VTexFormat.I8:
-                    return TextureDecompressors.ReadI8(skiaBitmap, GetTextureSpan());
-
-                case VTexFormat.RGBA8888:
-                    return TextureDecompressors.ReadRGBA8888(skiaBitmap, GetTextureSpan());
-
-                case VTexFormat.R16:
-                    return TextureDecompressors.ReadR16(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RG1616:
-                    return TextureDecompressors.ReadRG1616(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RGBA16161616:
-                    return TextureDecompressors.ReadRGBA16161616(skiaBitmap, GetTextureSpan());
-
-                case VTexFormat.R16F:
-                    return TextureDecompressors.ReadR16F(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RG1616F:
-                    return TextureDecompressors.ReadRG1616F(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RGBA16161616F:
-                    return TextureDecompressors.ReadRGBA16161616F(skiaBitmap, GetTextureSpan());
-
-                case VTexFormat.R32F:
-                    return TextureDecompressors.ReadR32F(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RG3232F:
-                    return TextureDecompressors.ReadRG3232F(GetDecompressedBuffer(), Width, Height);
-
+                    return TextureDecompressors.ReadI8(GetTextureSpan(), width, height, linear);
                 case VTexFormat.RGB323232F:
-                    return TextureDecompressors.ReadRGB323232F(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.RGBA32323232F:
-                    return TextureDecompressors.ReadRGBA32323232F(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.BC6H:
-                    return BPTC.BPTCDecoders.UncompressBC6H(GetDecompressedBuffer(), Width, Height);
-
-                case VTexFormat.BC7:
-                    bool hemiOctRB = false;
-                    invert = false;
-                    if (Resource.EditInfo.Structs.ContainsKey(ResourceEditInfo.REDIStruct.SpecialDependencies))
-                    {
-                        var specialDeps = (SpecialDependencies)Resource.EditInfo.Structs[ResourceEditInfo.REDIStruct.SpecialDependencies];
-                        hemiOctRB = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version Mip HemiOctIsoRoughness_RG_B");
-                        invert = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version LegacySource1InvertNormals");
-                    }
-
-                    return BPTC.BPTCDecoders.UncompressBC7(GetDecompressedBuffer(), Width, Height, hemiOctRB, invert);
-
+                    return TextureDecompressors.ReadRGB323232F(GetDecompressedBuffer(), width, height, linear);
                 case VTexFormat.ATI2N:
-                    normalize = false;
+                    var normalize = false;
                     if (Resource.EditInfo.Structs.ContainsKey(ResourceEditInfo.REDIStruct.SpecialDependencies))
                     {
                         var specialDeps = (SpecialDependencies)Resource.EditInfo.Structs[ResourceEditInfo.REDIStruct.SpecialDependencies];
                         normalize = specialDeps.List.Any(dependancy => dependancy.CompilerIdentifier == "CompileTexture" && dependancy.String == "Texture Compiler Version Image NormalizeNormals");
                     }
 
-                    return TextureDecompressors.UncompressATI2N(skiaBitmap, GetTextureSpan(), Width, Height, normalize);
-
+                    return TextureDecompressors.UncompressATI2N(GetTextureSpan(), Width, Height, normalize, linear);
                 case VTexFormat.IA88:
-                    return TextureDecompressors.ReadIA88(skiaBitmap, GetTextureSpan());
-
+                    return TextureDecompressors.ReadIA88(GetTextureSpan(), Width, Height, linear);
                 case VTexFormat.ATI1N:
-                    return TextureDecompressors.UncompressATI1N(skiaBitmap, GetTextureSpan(), Width, Height);
+                    return TextureDecompressors.UncompressATI1N(GetTextureSpan(), Width, Height, linear);
+            }
 
-                // TODO: Are we sure DXT5 and RGBA8888 are just raw buffers?
-                case VTexFormat.JPEG_DXT5:
+            Texture2D texture;
+
+            switch (Format)
+            {
+                case VTexFormat.DXT1:
+                    texture = new Texture2D(width, height, TextureFormat.DXT1, false, linear);
+                    break;
+                case VTexFormat.DXT5:
                 case VTexFormat.JPEG_RGBA8888:
                 case VTexFormat.PNG_DXT5:
+                    texture = new Texture2D(width, height, TextureFormat.DXT5, false, linear);
+                    break;
+                case VTexFormat.RGBA8888:
+                    texture = new Texture2D(width, height, TextureFormat.RGBA32, false, linear);
+                    break;
+                case VTexFormat.R16:
+                    texture = new Texture2D(width, height, TextureFormat.R16, false, linear);
+                    texture.SetPixelData(GetDecompressedTextureAtMipLevel(0), 0);
+                    texture.Apply();
+
+                    return texture;
+                case VTexFormat.RG1616:
+                    texture = new Texture2D(width, height, TextureFormat.RG32, false, linear);
+                    break;
+                case VTexFormat.RGBA16161616:
+                    texture = new Texture2D(width, height, TextureFormat.RGBA64, false, linear);
+                    break;
+                case VTexFormat.R16F:
+                    texture = new Texture2D(width, height, TextureFormat.RHalf, false, linear);
+                    break;
+                case VTexFormat.RG1616F:
+                    texture = new Texture2D(width, height, TextureFormat.RGHalf, false, linear);
+                    break;
+                case VTexFormat.RGBA16161616F:
+                    texture = new Texture2D(width, height, TextureFormat.RGBAHalf, false, linear);
+                    break;
+                case VTexFormat.R32F:
+                    texture = new Texture2D(width, height, TextureFormat.RFloat, false, linear);
+                    break;
+                case VTexFormat.RG3232F:
+                    texture = new Texture2D(width, height, TextureFormat.RGFloat, false, linear);
+                    break;
+                case VTexFormat.RGBA32323232F:
+                    texture = new Texture2D(width, height, TextureFormat.RGBAFloat, false, linear);
+                    break;
+                case VTexFormat.BC6H:
+                    texture = new Texture2D(width, height, TextureFormat.BC6H, false, linear);
+                    break;
+                case VTexFormat.BC7:
+                    texture = new Texture2D(width, height, TextureFormat.BC7, false, linear);
+                    break;
+                case VTexFormat.JPEG_DXT5:
+                    texture = new Texture2D(width, height, TextureFormat.DXT5Crunched, false, linear);
+                    break;
                 case VTexFormat.PNG_RGBA8888:
-                    return ReadBuffer();
-
+                    texture = new Texture2D(width, height, TextureFormat.RGBA32, false, linear);
+                    break;
                 case VTexFormat.ETC2:
-                    // TODO: Rewrite EtcDecoder to work on skia span directly
-                    var etc = new Etc.EtcDecoder();
-                    var data = new byte[skiaBitmap.RowBytes * skiaBitmap.Height];
-                    etc.DecompressETC2(GetDecompressedTextureAtMipLevel(0), width, height, data);
-                    var gcHandle = GCHandle.Alloc(data, GCHandleType.Pinned);
-                    skiaBitmap.InstallPixels(skiaBitmap.Info, gcHandle.AddrOfPinnedObject(), skiaBitmap.RowBytes, (address, context) => { gcHandle.Free(); }, null);
+                    texture = new Texture2D(width, height, TextureFormat.ETC2_RGB, false, linear);
                     break;
-
                 case VTexFormat.ETC2_EAC:
-                    // TODO: Rewrite EtcDecoder to work on skia span directly
-                    var etc2 = new Etc.EtcDecoder();
-                    var data2 = new byte[skiaBitmap.RowBytes * skiaBitmap.Height];
-                    etc2.DecompressETC2A8(GetDecompressedTextureAtMipLevel(0), width, height, data2);
-                    var gcHandle2 = GCHandle.Alloc(data2, GCHandleType.Pinned);
-                    skiaBitmap.InstallPixels(skiaBitmap.Info, gcHandle2.AddrOfPinnedObject(), skiaBitmap.RowBytes, (address, context) => { gcHandle2.Free(); }, null);
+                    texture = new Texture2D(width, height, TextureFormat.ETC2_RGBA8, false, linear);
                     break;
-
                 case VTexFormat.BGRA8888:
-                    return TextureDecompressors.ReadBGRA8888(skiaBitmap, GetTextureSpan());
-
+                    texture = new Texture2D(width, height, TextureFormat.BGRA32, false, linear);
+                    break;
                 default:
                     throw new NotImplementedException(string.Format("Unhandled image type: {0}", Format));
             }
 
-            return skiaBitmap;
+            texture.SetPixelData(GetDecompressedTextureAtMipLevel(0), 0);
+            texture.Apply();
+
+            return texture;
         }
-        */
 
         private int CalculateBufferSizeForMipLevel(int mipLevel)
         {
@@ -512,13 +483,6 @@ namespace ValveResourceFormat.ResourceTypes
 
             return new BinaryReader(outStream); // TODO: dispose
         }
-
-        /*
-        private SKBitmap ReadBuffer()
-        {
-            return SKBitmap.Decode(Reader.ReadBytes((int)Reader.BaseStream.Length));
-        }
-        */
 
 #pragma warning disable CA1024 // Use properties where appropriate
         public int GetBlockSize()

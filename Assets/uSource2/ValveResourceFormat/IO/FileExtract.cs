@@ -1,8 +1,12 @@
 using System;
 using System.IO;
 using System.Text;
+using UnityEngine;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
+using Material = ValveResourceFormat.ResourceTypes.Material;
+using ParticleSystem = ValveResourceFormat.ResourceTypes.ParticleSystem;
+using Texture = ValveResourceFormat.ResourceTypes.Texture;
 
 namespace ValveResourceFormat.IO
 {
@@ -28,17 +32,9 @@ namespace ValveResourceFormat.IO
                     break;
 
                 case ResourceType.Texture:
-                    // var bitmap = ((Texture)resource.DataBlock).GenerateBitmap();
-
-                    using (var ms = new MemoryStream())
-                    {
-                        // bitmap.PeekPixels().Encode(ms, SKEncodedImageFormat.Png, 100);
-
-                        data = ms.ToArray();
-                    }
+                    data = ((Texture)resource.DataBlock).GenerateTexture2D().EncodeToPNG();
 
                     break;
-
                 case ResourceType.Particle:
                     data = Encoding.UTF8.GetBytes(((ParticleSystem)resource.DataBlock).ToString());
                     break;
