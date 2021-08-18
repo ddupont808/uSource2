@@ -24,6 +24,9 @@ namespace uSource2
 
     public class uSource2Exporter : MonoBehaviour
     {
+        static readonly float SOURCE_UNIT = .0254f;
+        static readonly Matrix4x4 SOURCE_MATRIX = Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(-90f, 0f, 0f), new Vector3(-SOURCE_UNIT, SOURCE_UNIT, SOURCE_UNIT));
+
         private static uSource2Exporter inst;
         public static uSource2Exporter Inst
         {
@@ -48,7 +51,7 @@ namespace uSource2
             loader = new VPKLoader(packages);
         }
 
-        public void LoadMesh(GameObject root, string modelPath, string materialOveride = null)
+        public void LoadMesh(GameObject root, string modelPath, string materialOveride = null, bool importColliders = false)
         {
             var resource = loader.LoadFile(modelPath);
             if (resource == null)
@@ -67,12 +70,141 @@ namespace uSource2
                             meshes[i].Name, meshes[i].Mesh, model.GetSkeleton(i), materialOveride);
 
                         if (node == null)
-                        {
                             continue;
-                        }
 
-                        node.transform.localScale = new Vector3(-.0254f, .0254f, .0254f);
+                        node.hideFlags = HideFlags.HideAndDontSave;
+
+                        node.transform.localScale = new Vector3(-SOURCE_UNIT, SOURCE_UNIT, SOURCE_UNIT);
                         node.transform.localEulerAngles = new Vector3(-90f, 0f, 0f);
+                    }
+
+
+                    if (importColliders)
+                    {
+                        var phys = model.GetEmbeddedPhys().Data;
+
+                        var parts = phys.GetArray<IKeyValueCollection>("m_parts");
+                        if (parts.Length == 0)
+                            return;
+
+                        foreach(var part in parts)
+                        {
+                            var shape = part.GetSubCollection("m_rnShape");
+
+                            var m_spheres = shape.GetArray("m_spheres");
+                            if (m_spheres.Length > 0)
+                            {
+                                foreach(var m_sphere in m_spheres)
+                                {
+                                    var sphere = m_sphere.GetSubCollection("m_Sphere");
+                                    var go = new GameObject("m_sphere");
+                                    var center = sphere.GetArray<double>("m_vCenter");
+                                    
+                                    go.transform.parent = root.transform;
+                                    go.transform.localPosition = SOURCE_MATRIX.MultiplyPoint(new Vector3((float)center[0], (float)center[1], (float)center[2]));
+                                    go.transform.localScale = Vector3.one;
+
+                                    go.AddComponent<SphereCollider>().radius = sphere.GetFloatProperty("m_flRadius") * SOURCE_UNIT;
+
+                                    go.hideFlags = HideFlags.HideAndDontSave;
+                                }
+                            }
+
+                            var m_capsules = shape.GetArray("m_capsules");
+                            if (m_capsules.Length > 0)
+                            {
+                                foreach (var m_capsule in m_capsules)
+                                {
+                                    var capsule = m_capsule.GetSubCollection("m_Capsule");
+                                    var go = new GameObject("m_capsule");
+
+                                    var centers = capsule.GetArray("m_vCenter", v => SOURCE_MATRIX.MultiplyPoint(new Vector3(v.GetFloatProperty("0"), v.GetFloatProperty("1"), v.GetFloatProperty("2"))));
+
+                                    var center = (centers[0] + centers[1]) / 2f;
+
+                                    go.transform.parent = root.transform;
+                                    go.transform.localPosition = center;
+                                    go.transform.localScale = Vector3.one;
+                                    go.transform.up = (centers[1] - centers[0]).normalized;
+
+                                    var cyl = go.AddComponent<CapsuleCollider>();
+                                    cyl.height = Vector3.Distance(centers[0], centers[1]);
+                                    cyl.radius = capsule.GetFloatProperty("m_flRadius") * SOURCE_UNIT;
+
+                                    go.hideFlags = HideFlags.HideAndDontSave;
+                                }
+                            }
+
+                            var m_hulls = shape.GetArray("m_hulls");
+                            if (m_hulls.Length > 0)
+                            {
+                                foreach(var m_hull in m_hulls)
+                                {
+                                    var hull = m_hull.GetSubCollection("m_Hull");
+                                    var go = new GameObject("m_hull");
+                                    var centroid = hull.GetArray<double>("m_vCentroid");
+
+                                    go.transform.parent = root.transform;
+                                    go.transform.localPosition = default; // SOURCE_MATRIX.MultiplyPoint(new Vector3((float)centroid[0], (float)centroid[1], (float)centroid[2]));
+                                    go.transform.localScale = new Vector3(-SOURCE_UNIT, SOURCE_UNIT, SOURCE_UNIT);
+                                    go.transform.localEulerAngles = new Vector3(-90f, 0f, 0f);
+
+                                    var vertices = hull.GetArray("m_Vertices", v => new Vector3(v.GetFloatProperty("0"), v.GetFloatProperty("1"), v.GetFloatProperty("2")));
+                                    var m_edges = hull.GetArray("m_Edges");
+
+                                    var hullMesh = new Mesh();
+
+                                    var triangles = new List<int>();
+
+                                    foreach(var face in hull.GetArray("m_Faces"))
+                                    {
+                                        var edges = 0;
+
+                                        var startEdgeIndex = (int)face.GetIntegerProperty("m_nEdge");
+                                        var nextEdgeIndex = m_edges[startEdgeIndex].GetIntegerProperty("m_nNext");
+                                        var triangleIndex = triangles.Count;
+
+                                        triangles.Add((int)m_edges[startEdgeIndex].GetIntegerProperty("m_nOrigin"));
+                                        edges++;
+
+                                        while (nextEdgeIndex != startEdgeIndex)
+                                        {
+                                            triangles.Add((int)m_edges[nextEdgeIndex].GetIntegerProperty("m_nOrigin"));
+                                            nextEdgeIndex = m_edges[nextEdgeIndex].GetIntegerProperty("m_nNext");
+
+                                            edges++;
+                                        }
+
+                                        switch(edges)
+                                        {
+                                            case 3:
+                                                break;
+                                            case 4:
+                                                triangles.AddRange(new[] { triangles[triangleIndex], triangles[triangleIndex + 2] });
+                                                break;
+                                            default:
+                                                Debug.LogWarning($"Ignoring Hull face with {edges} edges");
+                                                triangles.RemoveRange(triangleIndex, edges);
+                                                break;
+                                        }
+                                    }
+
+                                    hullMesh.vertices = vertices.ToArray();
+                                    hullMesh.triangles = triangles.ToArray();
+
+                                    var mc = go.AddComponent<MeshCollider>();
+
+                                    mc.sharedMesh = hullMesh;
+                                    mc.convex = true;
+
+                                    go.hideFlags = HideFlags.HideAndDontSave;
+                                }
+                            }
+
+                            var m_meshes = shape.GetArray("m_meshes");
+                            if (m_meshes.Length > 0)
+                                Debug.LogWarning("Ignored Phys shape m_meshes: Not yet implemented");
+                        }
                     }
                 }
             }
@@ -237,7 +369,7 @@ namespace uSource2
 
                     var dataArray = Mesh.AllocateWritableMeshData(1);
                     var meshData = dataArray[0];
-
+                    
                     var attributes = vertexBuffer.InputLayoutFields;
                     attributes.Sort((a, b) => (int)GetAccessor(a).attribute - (int)GetAccessor(b).attribute);
 

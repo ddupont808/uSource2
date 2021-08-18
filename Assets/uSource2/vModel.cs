@@ -21,10 +21,12 @@ namespace uSource2
     using VMesh = ValveResourceFormat.ResourceTypes.Mesh;
     using VModel = ValveResourceFormat.ResourceTypes.Model;
 
+    [SelectionBase]
     public class vModel : MonoBehaviour
     {
         public string meshPath = "models/props_junk/popcan01.vmdl";
         public bool overrideMaterial = false;
+        public bool importColliders = false;
 
         public string materialOverride = "";
 
@@ -32,7 +34,7 @@ namespace uSource2
         {
             var exporter = uSource2Exporter.Inst;
 
-            exporter.LoadMesh(gameObject, meshPath, overrideMaterial ? materialOverride : null);
+            exporter.LoadMesh(gameObject, meshPath, overrideMaterial ? materialOverride : null, importColliders);
         }
     }
 }

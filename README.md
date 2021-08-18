@@ -4,7 +4,7 @@ Load in props and materials from Half-Life: Alyx, S&box, and other Source 2 game
 
 Still a work in progress.
 
-![](https://i.imgur.com/B9J9lnj.png)
+![](https://i.imgur.com/0COVGBE.png)
 
 ## Resources
 
